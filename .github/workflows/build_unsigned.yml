@@ -40,6 +40,11 @@ jobs:
           test -d IDeviceKitten
           test -d Zsign
 
+      - name: Verify LicensePlist input
+        run: |
+          set -euxo pipefail
+          test -s "$GITHUB_WORKSPACE/LICENSE_LC"
+
       - name: Resolve packages
         run: |
           set -o pipefail
