@@ -60,6 +60,10 @@ jobs:
           PY
           ! grep -q 'productName = ZsignSwift;' Feather.xcodeproj/project.pbxproj
           grep -q 'productName = Zsign;' Feather.xcodeproj/project.pbxproj
+          grep -RIl --include='*.swift' 'ZsignSwift' Feather | while read -r file; do
+            sed -i '' 's/\bZsignSwift\b/Zsign/g' "$file"
+          done
+          ! grep -R --include='*.swift' -n 'ZsignSwift' Feather
 
       - name: Resolve packages
         run: |
