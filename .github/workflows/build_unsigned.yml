@@ -44,22 +44,19 @@ jobs:
           grep -q 'name: "Zsign"' Zsign/Package.swift
           python3 - <<'PY'
           from pathlib import Path
+          import re
           p = Path("Feather.xcodeproj/project.pbxproj")
           s = p.read_text()
           s = s.replace("/* ZsignSwift in Frameworks */", "/* Zsign in Frameworks */")
           s = s.replace("/* ZsignSwift */", "/* Zsign */")
-          old = """3346F5C12DC329A200C7D508 /* Zsign */ = {
-            isa = XCSwiftPackageProductDependency;
-            productName = ZsignSwift;
-          };"""
-          new = """3346F5C12DC329A200C7D508 /* Zsign */ = {
-            isa = XCSwiftPackageProductDependency;
+          pattern = r'(3346F5C12DC329A200C7D508 /\* Zsign \*/ = \{\s*isa = XCSwiftPackageProductDependency;)(.*?)(\s*\};)'
+          replacement = r'''\1
             package = 3371F5152DA91FDC00281AC6 /* XCLocalSwiftPackageReference "Zsign" */;
-            productName = Zsign;
-          };"""
-          if old not in s:
-              raise SystemExit("Expected Feather ZsignSwift product dependency not found")
-          p.write_text(s.replace(old, new))
+            productName = Zsign;\3'''
+          s, n = re.subn(pattern, replacement, s, count=1, flags=re.S)
+          if n != 1:
+              raise SystemExit("Expected Feather Zsign product dependency block not found")
+          p.write_text(s)
           PY
           ! grep -q 'productName = ZsignSwift;' Feather.xcodeproj/project.pbxproj
           grep -q 'productName = Zsign;' Feather.xcodeproj/project.pbxproj
