@@ -38,20 +38,31 @@ jobs:
           test -d IDeviceKitten
           test -d Zsign
 
-      - name: Verify Zsign Swift package product
+      - name: Align Feather with actual Zsign product
         run: |
           set -euxo pipefail
-          test -f Zsign/Package.swift
-          cat Zsign/Package.swift
+          grep -q 'name: "Zsign"' Zsign/Package.swift
           python3 - <<'PY'
           from pathlib import Path
-          import re
-          package = Path("Zsign/Package.swift").read_text()
-          products = re.findall(r'\.library\s*\(\s*name:\s*"([^"]+)"', package)
-          print("Zsign library products:", products)
-          if "ZsignSwift" not in products:
-              raise SystemExit("Zsign package does not expose required product ZsignSwift")
+          p = Path("Feather.xcodeproj/project.pbxproj")
+          s = p.read_text()
+          s = s.replace("/* ZsignSwift in Frameworks */", "/* Zsign in Frameworks */")
+          s = s.replace("/* ZsignSwift */", "/* Zsign */")
+          old = """3346F5C12DC329A200C7D508 /* Zsign */ = {
+            isa = XCSwiftPackageProductDependency;
+            productName = ZsignSwift;
+          };"""
+          new = """3346F5C12DC329A200C7D508 /* Zsign */ = {
+            isa = XCSwiftPackageProductDependency;
+            package = 3371F5152DA91FDC00281AC6 /* XCLocalSwiftPackageReference "Zsign" */;
+            productName = Zsign;
+          };"""
+          if old not in s:
+              raise SystemExit("Expected Feather ZsignSwift product dependency not found")
+          p.write_text(s.replace(old, new))
           PY
+          ! grep -q 'productName = ZsignSwift;' Feather.xcodeproj/project.pbxproj
+          grep -q 'productName = Zsign;' Feather.xcodeproj/project.pbxproj
 
       - name: Resolve packages
         run: |
