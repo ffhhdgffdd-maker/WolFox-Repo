@@ -1,0 +1,24 @@
+name: Update WolFox Repository
+
+on:
+  release:
+    types: [published]
+
+permissions:
+  contents: write
+
+jobs:
+  update-source:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Update matching app release
+        env:
+          TAG: ${{ github.event.release.tag_name }}
+          DATE: ${{ github.event.release.published_at }}
+          REPO: ${{ github.repository }}
+        run: |
+          echo "Release published: $TAG"
+          echo "Keep app-repo.json app metadata managed by the WolFox panel."
+      - name: Validate JSON
+        run: python -m json.tool app-repo.json >/dev/null
