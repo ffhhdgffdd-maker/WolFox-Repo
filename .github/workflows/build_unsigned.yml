@@ -44,7 +44,7 @@ jobs:
       - name: Build unsigned archive
         run: |
           set -o pipefail
-          xcodebuild -workspace Feather.xcworkspace -scheme Feather -configuration Release -sdk iphoneos -archivePath "$RUNNER_TEMP/WolFox.xcarchive" CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO archive
+          xcodebuild -workspace Feather.xcworkspace -scheme Feather -configuration Release -sdk iphoneos -archivePath "$RUNNER_TEMP/WolFox.xcarchive" -skipPackagePluginValidation CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO archive
 
       - name: Package IPA
         run: |
