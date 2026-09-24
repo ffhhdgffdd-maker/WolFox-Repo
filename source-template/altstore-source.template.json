@@ -1,0 +1,36 @@
+{
+  "name": "WolFox Repo",
+  "identifier": "fun.repo.p3nd.wolfoxrepo",
+  "subtitle": "WolFox application repository",
+  "description": "Replace app values with authorized WolFox releases.",
+  "website": "https://github.com/ffhhdgffdd-maker/WolFox-Repo",
+  "tintColor": "007AFF",
+  "apps": [
+    {
+      "name": "APP_NAME",
+      "bundleIdentifier": "APP_BUNDLE_ID",
+      "developerName": "WolFox",
+      "subtitle": "APP_SUBTITLE",
+      "localizedDescription": "APP_DESCRIPTION",
+      "iconURL": "APP_ICON_HTTPS_URL",
+      "tintColor": "007AFF",
+      "category": "utilities",
+      "versions": [
+        {
+          "version": "1.0.0",
+          "buildVersion": "1",
+          "date": "2026-09-24",
+          "localizedDescription": "Initial release",
+          "downloadURL": "GITHUB_RELEASE_IPA_HTTPS_URL",
+          "size": 0,
+          "minOSVersion": "16.0"
+        }
+      ],
+      "appPermissions": {
+        "entitlements": [],
+        "privacy": {}
+      }
+    }
+  ],
+  "news": []
+}
