@@ -38,29 +38,6 @@ jobs:
           test -d IDeviceKitten
           test -d Zsign
 
-      - name: Align Xcode project with Zsign package
-        run: |
-          set -euxo pipefail
-          python3 - <<'PY'
-          from pathlib import Path
-          project = Path("Feather.xcodeproj/project.pbxproj")
-          text = project.read_text()
-          old = """3346F5C12DC329A200C7D508 /* ZsignSwift */ = {
-            isa = XCSwiftPackageProductDependency;
-            productName = ZsignSwift;
-          };"""
-          new = """3346F5C12DC329A200C7D508 /* Zsign */ = {
-            isa = XCSwiftPackageProductDependency;
-            package = 3371F5152DA91FDC00281AC6 /* XCLocalSwiftPackageReference "Zsign" */;
-            productName = Zsign;
-          };"""
-          if old not in text:
-              raise SystemExit("The expected ZsignSwift dependency was not found")
-          project.write_text(text.replace(old, new))
-          PY
-          ! grep -q 'productName = ZsignSwift;' Feather.xcodeproj/project.pbxproj
-          grep -q 'productName = Zsign;' Feather.xcodeproj/project.pbxproj
-
       - name: Resolve packages
         run: |
           set -o pipefail
