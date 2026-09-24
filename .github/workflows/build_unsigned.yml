@@ -1,0 +1,35 @@
+name: Build WolFox Unsigned IPA
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - "Feather/**"
+      - "AltSourceKit/**"
+      - "NimbleKit/**"
+      - "Feather.xcodeproj/**"
+      - "Feather.xcworkspace/**"
+      - "Feather.xcconfig"
+jobs:
+  build:
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+      - name: Build unsigned archive
+        run: |
+          set -o pipefail
+          xcodebuild -workspace Feather.xcworkspace -scheme Feather -configuration Release -sdk iphoneos -archivePath "$RUNNER_TEMP/WolFox.xcarchive" CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO archive
+      - name: Package IPA
+        run: |
+          APP=$(find "$RUNNER_TEMP/WolFox.xcarchive/Products/Applications" -maxdepth 1 -name "*.app" | head -1)
+          test -n "$APP"
+          mkdir -p "$RUNNER_TEMP/Payload"
+          cp -R "$APP" "$RUNNER_TEMP/Payload/"
+          cd "$RUNNER_TEMP"
+          zip -qry WolFox-Repo-unsigned.ipa Payload
+      - uses: actions/upload-artifact@v4
+        with:
+          name: WolFox-Repo-unsigned
+          path: /Users/runner/work/_temp/WolFox-Repo-unsigned.ipa
