@@ -10,26 +10,57 @@ on:
       - "Feather.xcodeproj/**"
       - "Feather.xcworkspace/**"
       - "Feather.xcconfig"
+      - ".github/workflows/build_unsigned.yml"
+
 jobs:
   build:
     runs-on: macos-latest
     steps:
       - uses: actions/checkout@v4
-        with:
-          submodules: recursive
+
+      - name: Restore complete Feather 2.9.0 source tree
+        run: |
+          set -euxo pipefail
+          git clone --depth 1 --branch v2.9.0 https://github.com/khcrysalis/Feather.git "$RUNNER_TEMP/Feather-Upstream"
+          rsync -a --ignore-existing --exclude '.git' "$RUNNER_TEMP/Feather-Upstream/" ./
+          rm -rf AltSourceKit NimbleKit IDeviceKitten Zsign
+          cp -R "$RUNNER_TEMP/Feather-Upstream/AltSourceKit" ./AltSourceKit
+          cp -R "$RUNNER_TEMP/Feather-Upstream/NimbleKit" ./NimbleKit
+          git clone --depth 1 https://github.com/khcrysalis/IDeviceKit.git IDeviceKitten
+          git clone --depth 1 --branch package https://github.com/khcrysalis/Zsign-Package.git Zsign
+          test -f Feather.xcworkspace/contents.xcworkspacedata
+          test -f Feather.xcodeproj/project.pbxproj
+          test -d Feather
+          test -d AltSourceKit/Sources
+          test -d NimbleKit/Sources
+          test -d IDeviceKitten
+          test -d Zsign
+
+      - name: Resolve packages
+        run: |
+          set -o pipefail
+          xcodebuild -resolvePackageDependencies -workspace Feather.xcworkspace -scheme Feather
+
       - name: Build unsigned archive
         run: |
           set -o pipefail
           xcodebuild -workspace Feather.xcworkspace -scheme Feather -configuration Release -sdk iphoneos -archivePath "$RUNNER_TEMP/WolFox.xcarchive" CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO archive
+
       - name: Package IPA
         run: |
+          set -euxo pipefail
           APP=$(find "$RUNNER_TEMP/WolFox.xcarchive/Products/Applications" -maxdepth 1 -name "*.app" | head -1)
           test -n "$APP"
+          rm -rf "$RUNNER_TEMP/Payload"
           mkdir -p "$RUNNER_TEMP/Payload"
           cp -R "$APP" "$RUNNER_TEMP/Payload/"
           cd "$RUNNER_TEMP"
           zip -qry WolFox-Repo-unsigned.ipa Payload
+          shasum -a 256 WolFox-Repo-unsigned.ipa > WolFox-Repo-unsigned.ipa.sha256
+
       - uses: actions/upload-artifact@v4
         with:
           name: WolFox-Repo-unsigned
-          path: /Users/runner/work/_temp/WolFox-Repo-unsigned.ipa
+          path: |
+            ${{ runner.temp }}/WolFox-Repo-unsigned.ipa
+            ${{ runner.temp }}/WolFox-Repo-unsigned.ipa.sha256
