@@ -26,6 +26,10 @@ jobs:
           rm -rf AltSourceKit NimbleKit IDeviceKitten Zsign
           cp -R "$RUNNER_TEMP/Feather-Upstream/AltSourceKit" ./AltSourceKit
           cp -R "$RUNNER_TEMP/Feather-Upstream/NimbleKit" ./NimbleKit
+          if [ -f "$RUNNER_TEMP/Feather-Upstream/LICENSE_LC" ]; then
+            cp "$RUNNER_TEMP/Feather-Upstream/LICENSE_LC" ./LICENSE_LC
+          fi
+          test -f LICENSE_LC
           git clone --depth 1 https://github.com/khcrysalis/IDeviceKit.git IDeviceKitten
           git clone --depth 1 --branch package https://github.com/khcrysalis/Zsign-Package.git Zsign
           test -f Feather.xcworkspace/contents.xcworkspacedata
