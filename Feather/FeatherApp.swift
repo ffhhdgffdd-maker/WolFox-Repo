@@ -1,6 +1,8 @@
 //
 //  FeatherApp.swift
-//  WolFox Repo
+//  Feather
+//
+//  Created by samara on 10.04.2025.
 //
 
 import SwiftUI
@@ -10,108 +12,155 @@ import OSLog
 
 @main
 struct FeatherApp: App {
-    @UIApplicationDelegateAdaptor(AppDelegate.self) var appDelegate
-    let heartbeat = HeartbeatManager.shared
-    @StateObject var downloadManager = DownloadManager.shared
-    let storage = Storage.shared
-
-    var body: some Scene {
-        WindowGroup {
-            VStack {
-                DownloadHeaderView(downloadManager: downloadManager)
-                VariedTabbarView()
-                    .environment(\.managedObjectContext, storage.context)
-                    .onOpenURL(perform: _handleURL)
-            }
-            .animation(.smooth, value: downloadManager.manualDownloads.description)
-            .onAppear {
-                if let style = UIUserInterfaceStyle(rawValue: UserDefaults.standard.integer(forKey: "Feather.userInterfaceStyle")) {
-                    UIApplication.topViewController()?.view.window?.overrideUserInterfaceStyle = style
-                }
-                UIApplication.topViewController()?.view.window?.tintColor = UIColor(Color(hex: "#007AFF"))
-            }
-        }
-    }
-
-    private func _handleURL(_ url: URL) {
-        if url.scheme == "feather" {
-            if let fullPath = url.validatedScheme(after: "/source/") {
-                FR.handleSource(fullPath) { }
-            }
-            if let fullPath = url.validatedScheme(after: "/install/"), let downloadURL = URL(string: fullPath) {
-                _ = DownloadManager.shared.startDownload(from: downloadURL)
-            }
-        } else if url.pathExtension == "ipa" || url.pathExtension == "tipa" {
-            if FileManager.default.isFileFromFileProvider(at: url) {
-                guard url.startAccessingSecurityScopedResource() else { return }
-            }
-            FR.handlePackageFile(url) { _ in }
-        }
-    }
+	@UIApplicationDelegateAdaptor(AppDelegate.self) var appDelegate
+	
+	let heartbeat = HeartbeatManager.shared
+	
+	@StateObject var downloadManager = DownloadManager.shared
+	let storage = Storage.shared
+	
+	var body: some Scene {
+		WindowGroup {
+			VStack {
+				DownloadHeaderView(downloadManager: downloadManager)
+					.transition(.move(edge: .top).combined(with: .opacity))
+				VariedTabbarView()
+					.environment(\.managedObjectContext, storage.context)
+					.onOpenURL(perform: _handleURL)
+					.transition(.move(edge: .top).combined(with: .opacity))
+			}
+			.animation(.smooth, value: downloadManager.manualDownloads.description)
+			.onReceive(NotificationCenter.default.publisher(for: .heartbeatInvalidHost)) { _ in
+				DispatchQueue.main.async {
+					UIAlertController.showAlertWithOk(
+						title: "InvalidHostID",
+						message: .localized("Your pairing file is invalid and is incompatible with your device, please import a valid pairing file.")
+					)
+				}
+			}
+			.onAppear {
+				if let style = UIUserInterfaceStyle(rawValue: UserDefaults.standard.integer(forKey: "Feather.userInterfaceStyle")) {
+					UIApplication.topViewController()?.view.window?.overrideUserInterfaceStyle = style
+				}
+				UIApplication.topViewController()?.view.window?.tintColor = UIColor(Color(hex: UserDefaults.standard.string(forKey: "Feather.userTintColor") ?? "#007AFF"))
+			}
+		}
+	}
+	
+	private func _handleURL(_ url: URL) {
+		if url.scheme == "feather" {
+			if url.host == "import-certificate" {
+				guard let components = URLComponents(url: url, resolvingAgainstBaseURL: false),
+					  let queryItems = components.queryItems else { return }
+				func queryValue(_ name: String) -> String? {
+					queryItems.first(where: { $0.name == name })?.value?.removingPercentEncoding
+				}
+				guard let p12Base64 = queryValue("p12"),
+					  let provisionBase64 = queryValue("mobileprovision"),
+					  let passwordBase64 = queryValue("password"),
+					  let passwordData = Data(base64Encoded: passwordBase64),
+					  let password = String(data: passwordData, encoding: .utf8) else { return }
+				let generator = UINotificationFeedbackGenerator()
+				generator.prepare()
+				guard let p12URL = FileManager.default.decodeAndWrite(base64: p12Base64, pathComponent: ".p12"),
+					  let provisionURL = FileManager.default.decodeAndWrite(base64: provisionBase64, pathComponent: ".mobileprovision"),
+					  FR.checkPasswordForCertificate(for: p12URL, with: password, using: provisionURL) else {
+					generator.notificationOccurred(.error)
+					return
+				}
+				FR.handleCertificateFiles(p12URL: p12URL, provisionURL: provisionURL, p12Password: password) { error in
+					if let error = error {
+						UIAlertController.showAlertWithOk(title: .localized("Error"), message: error.localizedDescription)
+					} else {
+						generator.notificationOccurred(.success)
+					}
+				}
+				return
+			}
+			if url.host == "export-certificate" {
+				guard let components = URLComponents(url: url, resolvingAgainstBaseURL: false) else { return }
+				let queryItems = components.queryItems?.reduce(into: [String: String]()) { $0[$1.name.lowercased()] = $1.value } ?? [:]
+				guard let callbackTemplate = queryItems["callback_template"]?.removingPercentEncoding else { return }
+				FR.exportCertificateAndOpenUrl(using: callbackTemplate)
+			}
+			if let fullPath = url.validatedScheme(after: "/source/") {
+				FR.handleSource(fullPath) { }
+			}
+			if let fullPath = url.validatedScheme(after: "/install/"), let downloadURL = URL(string: fullPath) {
+				_ = DownloadManager.shared.startDownload(from: downloadURL)
+			}
+		} else if url.pathExtension == "ipa" || url.pathExtension == "tipa" {
+			if FileManager.default.isFileFromFileProvider(at: url) {
+				guard url.startAccessingSecurityScopedResource() else { return }
+			}
+			FR.handlePackageFile(url) { _ in }
+		}
+	}
 }
 
 class AppDelegate: NSObject, UIApplicationDelegate {
-    func application(_ application: UIApplication, didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]? = nil) -> Bool {
-        _createPipeline()
-        _createDocumentsDirectories()
-        ResetView.clearWorkCache()
-        _configureWolFoxSource()
-        _addDefaultCertificates()
-        return true
-    }
+	func application(_ application: UIApplication, didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]? = nil) -> Bool {
+		_createPipeline()
+		_createDocumentsDirectories()
+		ResetView.clearWorkCache()
+		_configureWolFoxRepository()
+		_addDefaultCertificates()
+		return true
+	}
+	
+	private func _createPipeline() {
+		DataLoader.sharedUrlCache.diskCapacity = 0
+		let pipeline = ImagePipeline {
+			let config = URLSessionConfiguration.default
+			config.urlCache = nil
+			let dataCache = try? DataCache(name: "wolfox.repo.datacache")
+			let imageCache = Nuke.ImageCache()
+			dataCache?.sizeLimit = 500 * 1024 * 1024
+			imageCache.costLimit = 100 * 1024 * 1024
+			$0.dataCache = dataCache
+			$0.imageCache = imageCache
+			$0.dataLoader = DataLoader(configuration: config)
+			$0.dataCachePolicy = .automatic
+			$0.isStoringPreviewsInMemoryCache = false
+		}
+		ImagePipeline.shared = pipeline
+	}
+	
+	private func _createDocumentsDirectories() {
+		let fileManager = FileManager.default
+		[fileManager.archives, fileManager.certificates, fileManager.signed, fileManager.unsigned].forEach {
+			try? fileManager.createDirectoryIfNeeded(at: $0)
+		}
+	}
 
-    private func _createPipeline() {
-        DataLoader.sharedUrlCache.diskCapacity = 0
-        let pipeline = ImagePipeline {
-            let config = URLSessionConfiguration.default
-            config.urlCache = nil
-            let dataCache = try? DataCache(name: "wolfox.repo.datacache")
-            let imageCache = Nuke.ImageCache()
-            dataCache?.sizeLimit = 500 * 1024 * 1024
-            imageCache.costLimit = 100 * 1024 * 1024
-            $0.dataCache = dataCache
-            $0.imageCache = imageCache
-            $0.dataLoader = DataLoader(configuration: config)
-            $0.dataCachePolicy = .automatic
-            $0.isStoringPreviewsInMemoryCache = false
-        }
-        ImagePipeline.shared = pipeline
-    }
-
-    private func _createDocumentsDirectories() {
-        let fileManager = FileManager.default
-        [fileManager.archives, fileManager.certificates, fileManager.signed, fileManager.unsigned].forEach {
-            try? fileManager.createDirectoryIfNeeded(at: $0)
-        }
-    }
-
-    private func _configureWolFoxSource() {
-        let migrationKey = "WolFox.didConfigureDefaultSource"
-        guard !UserDefaults.standard.bool(forKey: migrationKey) else { return }
-        FR.handleSource(WolFoxRepository.sourceURL) {
-            UserDefaults.standard.set(true, forKey: migrationKey)
-        }
-    }
-
-    private func _addDefaultCertificates() {
-        guard UserDefaults.standard.bool(forKey: "feather.didImportDefaultCertificates") == false,
-              let signingAssetsURL = Bundle.main.url(forResource: "signing-assets", withExtension: nil) else { return }
-        do {
-            let folders = try FileManager.default.contentsOfDirectory(at: signingAssetsURL, includingPropertiesForKeys: nil, options: .skipsHiddenFiles)
-            for folderURL in folders where folderURL.hasDirectoryPath {
-                let certName = folderURL.lastPathComponent
-                let p12Url = folderURL.appendingPathComponent("cert.p12")
-                let provisionUrl = folderURL.appendingPathComponent("cert.mobileprovision")
-                let passwordUrl = folderURL.appendingPathComponent("cert.txt")
-                guard FileManager.default.fileExists(atPath: p12Url.path),
-                      FileManager.default.fileExists(atPath: provisionUrl.path),
-                      FileManager.default.fileExists(atPath: passwordUrl.path) else { continue }
-                let password = try String(contentsOf: passwordUrl, encoding: .utf8)
-                FR.handleCertificateFiles(p12URL: p12Url, provisionURL: provisionUrl, p12Password: password, certificateName: certName, isDefault: true) { _ in }
-            }
-            UserDefaults.standard.set(true, forKey: "feather.didImportDefaultCertificates")
-        } catch {
-            Logger.misc.error("Failed to list signing-assets: \(error)")
-        }
-    }
+	private func _configureWolFoxRepository() {
+		let migrationKey = "WolFox.didConfigurePrivateRepository"
+		guard !UserDefaults.standard.bool(forKey: migrationKey) else { return }
+		ResetView.resetSources()
+		FR.handleSource(WolFoxRepository.sourceURL) {
+			UserDefaults.standard.set(true, forKey: migrationKey)
+		}
+	}
+	
+	private func _addDefaultCertificates() {
+		guard UserDefaults.standard.bool(forKey: "feather.didImportDefaultCertificates") == false,
+			  let signingAssetsURL = Bundle.main.url(forResource: "signing-assets", withExtension: nil) else { return }
+		do {
+			let folders = try FileManager.default.contentsOfDirectory(at: signingAssetsURL, includingPropertiesForKeys: nil, options: .skipsHiddenFiles)
+			for folderURL in folders where folderURL.hasDirectoryPath {
+				let certName = folderURL.lastPathComponent
+				let p12Url = folderURL.appendingPathComponent("cert.p12")
+				let provisionUrl = folderURL.appendingPathComponent("cert.mobileprovision")
+				let passwordUrl = folderURL.appendingPathComponent("cert.txt")
+				guard FileManager.default.fileExists(atPath: p12Url.path),
+					  FileManager.default.fileExists(atPath: provisionUrl.path),
+					  FileManager.default.fileExists(atPath: passwordUrl.path) else { continue }
+				let password = try String(contentsOf: passwordUrl, encoding: .utf8)
+				FR.handleCertificateFiles(p12URL: p12Url, provisionURL: provisionUrl, p12Password: password, certificateName: certName, isDefault: true) { _ in }
+			}
+			UserDefaults.standard.set(true, forKey: "feather.didImportDefaultCertificates")
+		} catch {
+			Logger.misc.error("Failed to list signing-assets: \(error)")
+		}
+	}
 }
