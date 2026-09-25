@@ -24,7 +24,7 @@ struct FeatherApp: App {
 			VStack {
 				DownloadHeaderView(downloadManager: downloadManager)
 					.transition(.move(edge: .top).combined(with: .opacity))
-				VariedTabbarView()
+				WolFoxOnboardingView()
 					.environment(\.managedObjectContext, storage.context)
 					.onOpenURL(perform: _handleURL)
 					.transition(.move(edge: .top).combined(with: .opacity))
