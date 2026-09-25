@@ -21,13 +21,14 @@ jobs:
       - name: Restore complete Feather 2.9.0 source tree
         run: |
           set -euxo pipefail
-          git clone --depth 1 --branch v2.9.0 https://github.com/khcrysalis/Feather.git "$RUNNER_TEMP/Feather-Upstream"\n          git -C "$RUNNER_TEMP/Feather-Upstream" submodule update --init --recursive
+          git clone --depth 1 --branch v2.9.0 https://github.com/khcrysalis/Feather.git "$RUNNER_TEMP/Feather-Upstream"
+          git -C "$RUNNER_TEMP/Feather-Upstream" submodule update --init --recursive
           rsync -a --ignore-existing --exclude '.git' "$RUNNER_TEMP/Feather-Upstream/" ./
           rm -rf AltSourceKit NimbleKit IDeviceKitten Zsign
           cp -R "$RUNNER_TEMP/Feather-Upstream/AltSourceKit" ./AltSourceKit
           cp -R "$RUNNER_TEMP/Feather-Upstream/NimbleKit" ./NimbleKit
-          git clone --depth 1 https://github.com/khcrysalis/IDeviceKit.git IDeviceKitten
-          git clone --depth 1 --branch package https://github.com/khcrysalis/Zsign-Package.git Zsign
+          cp -R "$RUNNER_TEMP/Feather-Upstream/IDeviceKitten" ./IDeviceKitten
+          cp -R "$RUNNER_TEMP/Feather-Upstream/Zsign" ./Zsign
           test -f Zsign/LICENSE_LC || cp Zsign/LICENSE Zsign/LICENSE_LC
           test -s Zsign/LICENSE_LC
           test -f Feather.xcworkspace/contents.xcworkspacedata
