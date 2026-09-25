@@ -88,7 +88,6 @@ class AppDelegate: NSObject, UIApplicationDelegate {
     private func _configureWolFoxSource() {
         let migrationKey = "WolFox.didConfigureDefaultSource"
         guard !UserDefaults.standard.bool(forKey: migrationKey) else { return }
-        Storage.shared.deleteAllSources()
         FR.handleSource(WolFoxRepository.sourceURL) {
             UserDefaults.standard.set(true, forKey: migrationKey)
         }
