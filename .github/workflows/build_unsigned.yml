@@ -21,7 +21,7 @@ jobs:
       - name: Restore complete Feather 2.9.0 source tree
         run: |
           set -euxo pipefail
-          git clone --depth 1 --branch v2.9.0 https://github.com/khcrysalis/Feather.git "$RUNNER_TEMP/Feather-Upstream"
+          git clone --depth 1 --branch v2.9.0 https://github.com/khcrysalis/Feather.git "$RUNNER_TEMP/Feather-Upstream"\n          git -C "$RUNNER_TEMP/Feather-Upstream" submodule update --init --recursive
           rsync -a --ignore-existing --exclude '.git' "$RUNNER_TEMP/Feather-Upstream/" ./
           rm -rf AltSourceKit NimbleKit IDeviceKitten Zsign
           cp -R "$RUNNER_TEMP/Feather-Upstream/AltSourceKit" ./AltSourceKit
@@ -37,33 +37,6 @@ jobs:
           test -d NimbleKit/Sources
           test -d IDeviceKitten
           test -d Zsign
-
-      - name: Align Feather with actual Zsign product
-        run: |
-          set -euxo pipefail
-          grep -q 'name: "Zsign"' Zsign/Package.swift
-          python3 - <<'PY'
-          from pathlib import Path
-          import re
-          p = Path("Feather.xcodeproj/project.pbxproj")
-          s = p.read_text()
-          s = s.replace("/* ZsignSwift in Frameworks */", "/* Zsign in Frameworks */")
-          s = s.replace("/* ZsignSwift */", "/* Zsign */")
-          pattern = r'(3346F5C12DC329A200C7D508 /\* Zsign \*/ = \{\s*isa = XCSwiftPackageProductDependency;)(.*?)(\s*\};)'
-          replacement = r'''\1
-            package = 3371F5152DA91FDC00281AC6 /* XCLocalSwiftPackageReference "Zsign" */;
-            productName = Zsign;\3'''
-          s, n = re.subn(pattern, replacement, s, count=1, flags=re.S)
-          if n != 1:
-              raise SystemExit("Expected Feather Zsign product dependency block not found")
-          p.write_text(s)
-          PY
-          ! grep -q 'productName = ZsignSwift;' Feather.xcodeproj/project.pbxproj
-          grep -q 'productName = Zsign;' Feather.xcodeproj/project.pbxproj
-          grep -RIl --include='*.swift' 'ZsignSwift' Feather | while read -r file; do
-            sed -i '' 's/ZsignSwift/Zsign/g' "$file"
-          done
-          ! grep -R --include='*.swift' -n 'ZsignSwift' Feather
 
       - name: Resolve packages
         run: |
