@@ -29,7 +29,7 @@ enum WolFoxCertificateError: LocalizedError {
     var errorDescription: String? {
         switch self {
         case .unavailableForDevice:
-            return "لا توجد شهادة مسجلة لهذا الجهاز في الخادم الخارجي."
+            return "لا توجد شهادة مسجلة لهذا الجهاز في الخادم الخارجي. انسخ معرف الجهاز وسجّله لدى المزوّد ثم أعد المحاولة."
         case .server(let status):
             return "تعذر الاتصال بخادم الشهادات (HTTP \(status))."
         case .invalidResponse:

@@ -1,7 +1,9 @@
 import SwiftUI
+import UIKit
 
 struct WolFoxCertificateView: View {
     @State private var phase: FetchPhase = .ready
+    @State private var copiedDeviceIdentifier = false
 
     private var isWorking: Bool {
         switch phase {
@@ -32,12 +34,23 @@ struct WolFoxCertificateView: View {
                 VStack(alignment: .leading, spacing: 12) {
                     certificateRow(title: "خادم الشهادات", value: WolFoxCertificateService.providerName, icon: "network")
                     Divider()
-                    certificateRow(title: "معرف الجهاز", value: WolFoxCertificateService.maskedDeviceIdentifier(), icon: "iphone")
+                    deviceRegistrationRow
                     Divider()
                     certificateRow(title: "طريقة الحماية", value: "تحقق ثم استيراد محلي", icon: "checkmark.shield")
                 }
                 .padding(16)
                 .background(Color(uiColor: .secondarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 18, style: .continuous))
+
+                VStack(alignment: .leading, spacing: 6) {
+                    Text("تفعيل جهاز جديد")
+                        .font(.subheadline.bold())
+                    Text("انسخ معرف الجهاز، سجّله لدى مزوّد الشهادات الخارجي، ثم اضغط «جلب الشهادة من الخادم». لا تُرسل ملفات P12 أو كلمات المرور داخل التطبيق.")
+                        .font(.footnote)
+                        .foregroundStyle(.secondary)
+                }
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .padding(15)
+                .background(Color.accentColor.opacity(0.08), in: RoundedRectangle(cornerRadius: 15, style: .continuous))
 
                 Button(action: fetchFromServer) {
                     HStack(spacing: 9) {
@@ -57,7 +70,7 @@ struct WolFoxCertificateView: View {
 
                 statusCard
 
-                Text("لا يعرض WolFox أو يشارك محتوى الشهادة في الواجهة. إذا لم تكن شهادتك مسجلة لدى المزوّد، ستظهر رسالة توضح ذلك.")
+                Text("لا يعرض WolFox أو يشارك محتوى الشهادة في الواجهة. التسجيل يتم لدى المزوّد الخارجي، بينما يستورد WolFox الشهادة المسجلة فقط بعد التحقق.")
                     .font(.footnote)
                     .multilineTextAlignment(.center)
                     .foregroundStyle(.secondary)
@@ -98,6 +111,31 @@ struct WolFoxCertificateView: View {
                     .textSelection(.enabled)
             }
             Spacer(minLength: 0)
+        }
+    }
+
+    private var deviceRegistrationRow: some View {
+        HStack(spacing: 12) {
+            Image(systemName: "iphone")
+                .frame(width: 20)
+                .foregroundStyle(Color.accentColor)
+            VStack(alignment: .leading, spacing: 2) {
+                Text("معرف تسجيل الجهاز")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                Text(WolFoxCertificateService.maskedDeviceIdentifier())
+                    .font(.subheadline.weight(.medium))
+            }
+            Spacer(minLength: 0)
+            Button {
+                UIPasteboard.general.string = WolFoxCertificateService.deviceIdentifier()
+                copiedDeviceIdentifier = true
+            } label: {
+                Label(copiedDeviceIdentifier ? "تم النسخ" : "نسخ", systemImage: copiedDeviceIdentifier ? "checkmark" : "doc.on.doc")
+                    .labelStyle(.iconOnly)
+            }
+            .buttonStyle(.bordered)
+            .accessibilityLabel(copiedDeviceIdentifier ? "تم نسخ معرف الجهاز" : "نسخ معرف الجهاز")
         }
     }
 
