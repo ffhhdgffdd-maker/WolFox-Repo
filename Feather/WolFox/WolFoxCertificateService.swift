@@ -20,7 +20,7 @@ struct WolFoxRemoteCertificate: Decodable {
 }
 
 enum WolFoxCertificateService {
-    static let endpoint = URL(string: "https://api.nekoo.eu.org/certificate/public")!
+    static let endpoint = WolFoxRepository.certificateProviderURL
     static let p12Password = "1"
 
     static func deviceIdentifier() -> String {

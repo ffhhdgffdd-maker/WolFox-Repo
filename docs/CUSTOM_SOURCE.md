@@ -1,11 +1,13 @@
 # WolFox Repo Source
 
-Canonical source manifest:
+Canonical application source:
 
-https://raw.githubusercontent.com/ffhhdgffdd-maker/WolFox-Repo/main/app-repo.json
+https://repo.p3nd.fun/source.php
 
-Repository:
+Website catalog:
 
-https://github.com/ffhhdgffdd-maker/WolFox-Repo
+https://repo.p3nd.fun/
 
-The dashboard should update `app-repo.json`. Applications shown in the client are read from the `apps` array. Each downloadable release must use its GitHub Release asset URL in `versions[].downloadURL`.
+The live source is maintained from the WolFox Repo dashboard. Applications shown in the client are read from its `apps` array and each downloadable release must use an authorized HTTPS IPA URL.
+
+> Certificate delivery is intentionally handled by the existing external certificate provider. The WolFox source endpoint contains no certificate data.

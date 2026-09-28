@@ -1,10 +1,10 @@
 {
   "name": "WolFox Repo",
   "identifier": "fun.repo.p3nd.wolfoxrepo",
-  "subtitle": "WolFox application repository",
-  "description": "Application source for WolFox Repo.",
-  "website": "https://github.com/ffhhdgffdd-maker/WolFox-Repo",
-  "tintColor": "007AFF",
+  "subtitle": "المصدر الموثوق لتطبيقات WolFox المعتمدة.",
+  "description": "The WolFox application catalog is published from https://repo.p3nd.fun/source.php.",
+  "website": "https://repo.p3nd.fun",
+  "tintColor": "2D6BFF",
   "apps": [],
   "news": []
 }
