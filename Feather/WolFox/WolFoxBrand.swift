@@ -65,7 +65,7 @@ struct WolFoxConnectionCard: View {
 
     var body: some View {
         HStack(spacing: 12) {
-            Image(systemName: "personalhotspot")
+            Image(systemName: "shareplay")
                 .font(.title3.weight(.semibold))
                 .foregroundStyle(Color(red: 0.16, green: 0.80, blue: 0.38))
                 .frame(width: 42, height: 42)
