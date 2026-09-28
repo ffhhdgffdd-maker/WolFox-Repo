@@ -1,4 +1,5 @@
 name: Build WolFox Unsigned IPA
+
 on:
   workflow_dispatch:
   push:
@@ -12,23 +13,43 @@ on:
       - "Feather.xcconfig"
       - ".github/workflows/build_unsigned.yml"
 
+permissions:
+  contents: read
+
+concurrency:
+  group: wolfox-ipa-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   build:
     runs-on: macos-latest
+    timeout-minutes: 90
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       - name: Restore complete Feather 2.9.0 source tree
+        shell: bash
         run: |
-          set -euxo pipefail
-          git clone --depth 1 --branch v2.9.0 https://github.com/khcrysalis/Feather.git "$RUNNER_TEMP/Feather-Upstream"
-          git -C "$RUNNER_TEMP/Feather-Upstream" submodule update --init --recursive
-          rsync -a --ignore-existing --exclude '.git' "$RUNNER_TEMP/Feather-Upstream/" ./
+          set -euo pipefail
+          upstream="$RUNNER_TEMP/Feather-Upstream"
+          for attempt in 1 2 3; do
+            rm -rf "$upstream"
+            if git clone --depth 1 --branch v2.9.0 https://github.com/khcrysalis/Feather.git "$upstream" \
+              && git -C "$upstream" submodule update --init --recursive; then
+              break
+            fi
+            if [ "$attempt" = 3 ]; then
+              echo "Unable to restore the pinned Feather 2.9.0 tree after ${attempt} attempts." >&2
+              exit 1
+            fi
+            sleep $((attempt * 5))
+          done
+          rsync -a --ignore-existing --exclude '.git' "$upstream/" ./
           rm -rf AltSourceKit NimbleKit IDeviceKitten Zsign
-          cp -R "$RUNNER_TEMP/Feather-Upstream/AltSourceKit" ./AltSourceKit
-          cp -R "$RUNNER_TEMP/Feather-Upstream/NimbleKit" ./NimbleKit
-          cp -R "$RUNNER_TEMP/Feather-Upstream/IDeviceKitten" ./IDeviceKitten
-          cp -R "$RUNNER_TEMP/Feather-Upstream/Zsign" ./Zsign
+          cp -R "$upstream/AltSourceKit" ./AltSourceKit
+          cp -R "$upstream/NimbleKit" ./NimbleKit
+          cp -R "$upstream/IDeviceKitten" ./IDeviceKitten
+          cp -R "$upstream/Zsign" ./Zsign
           test -f Zsign/LICENSE_LC || cp Zsign/LICENSE Zsign/LICENSE_LC
           test -s Zsign/LICENSE_LC
           test -f Feather.xcworkspace/contents.xcworkspacedata
@@ -40,30 +61,39 @@ jobs:
           test -d Zsign
 
       - name: Resolve packages
+        shell: bash
         run: |
-          set -o pipefail
+          set -euo pipefail
           xcodebuild -resolvePackageDependencies -workspace Feather.xcworkspace -scheme Feather
 
       - name: Build unsigned archive
+        shell: bash
         run: |
-          set -o pipefail
+          set -euo pipefail
           xcodebuild -workspace Feather.xcworkspace -scheme Feather -configuration Release -sdk iphoneos -archivePath "$RUNNER_TEMP/WolFox.xcarchive" -skipPackagePluginValidation CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO archive
 
-      - name: Package IPA
+      - name: Package and validate IPA
+        shell: bash
         run: |
-          set -euxo pipefail
-          APP=$(find "$RUNNER_TEMP/WolFox.xcarchive/Products/Applications" -maxdepth 1 -name "*.app" | head -1)
-          test -n "$APP"
+          set -euo pipefail
+          app=$(find "$RUNNER_TEMP/WolFox.xcarchive/Products/Applications" -maxdepth 1 -name "*.app" -print -quit)
+          test -n "$app"
+          test -s "$app/Info.plist"
           rm -rf "$RUNNER_TEMP/Payload"
           mkdir -p "$RUNNER_TEMP/Payload"
-          cp -R "$APP" "$RUNNER_TEMP/Payload/"
+          cp -R "$app" "$RUNNER_TEMP/Payload/"
           cd "$RUNNER_TEMP"
           zip -qry WolFox-Repo-unsigned.ipa Payload
+          test -s WolFox-Repo-unsigned.ipa
+          unzip -tq WolFox-Repo-unsigned.ipa
           shasum -a 256 WolFox-Repo-unsigned.ipa > WolFox-Repo-unsigned.ipa.sha256
+          test -s WolFox-Repo-unsigned.ipa.sha256
 
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: WolFox-Repo-unsigned
           path: |
             ${{ runner.temp }}/WolFox-Repo-unsigned.ipa
             ${{ runner.temp }}/WolFox-Repo-unsigned.ipa.sha256
+          if-no-files-found: error
+          retention-days: 14

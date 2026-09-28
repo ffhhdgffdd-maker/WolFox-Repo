@@ -1,18 +1,30 @@
 name: Validate WolFox Source
+
 on:
   push:
     paths:
       - app-repo.json
       - source-template/**
+      - .github/workflows/validate_source.yml
   pull_request:
     paths:
       - app-repo.json
       - source-template/**
+      - .github/workflows/validate_source.yml
+
+permissions:
+  contents: read
+
+concurrency:
+  group: wolfox-source-validation-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   validate:
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - name: Validate JSON
         run: python -m json.tool app-repo.json >/dev/null
       - name: Validate required source fields
@@ -21,10 +33,10 @@ jobs:
           import json
           with open("app-repo.json", encoding="utf-8") as f:
               d=json.load(f)
-          for key in ("name","identifier","apps"):
+          for key in ("name", "identifier", "apps"):
               assert key in d, f"missing {key}"
           for app in d["apps"]:
-              for key in ("name","bundleIdentifier","versions"):
+              for key in ("name", "bundleIdentifier", "versions"):
                   assert app.get(key), f"missing {key}"
               for v in app["versions"]:
                   assert v.get("version"), "missing version"
