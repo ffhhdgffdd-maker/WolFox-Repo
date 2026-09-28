@@ -9,6 +9,13 @@ struct WolFoxRemoteCertificate: Decodable {
     let planSelected: String?
     let certType: String?
     let udid: String?
+    let usesPrimarySigningFields: Bool
+
+    var hasSigningAssets: Bool {
+        guard let devp12, let devmp, !devp12.isEmpty, !devmp.isEmpty else { return false }
+        return Data(base64Encoded: devp12, options: .ignoreUnknownCharacters) != nil
+            && Data(base64Encoded: devmp, options: .ignoreUnknownCharacters) != nil
+    }
 
     enum CodingKeys: String, CodingKey {
         case devp12, devmp, udid
@@ -16,6 +23,30 @@ struct WolFoxRemoteCertificate: Decodable {
         case expireTime = "expire_time"
         case planSelected = "plan_selected"
         case certType = "cert_type"
+        case p12, mobileProvision = "mobileprovision"
+        case extraMobileProvision = "extra_mobile_provision"
+        case name, pname
+        case devCertType = "dev_cert_type"
+    }
+
+    init(from decoder: Decoder) throws {
+        let values = try decoder.container(keyedBy: CodingKeys.self)
+        let primaryP12 = try values.decodeIfPresent(String.self, forKey: .devp12)
+        let primaryProvision = try values.decodeIfPresent(String.self, forKey: .devmp)
+
+        devp12 = primaryP12 ?? (try values.decodeIfPresent(String.self, forKey: .p12))
+        devmp = primaryProvision
+            ?? (try values.decodeIfPresent(String.self, forKey: .mobileProvision))
+            ?? (try values.decodeIfPresent(String.self, forKey: .extraMobileProvision))
+        devName = try values.decodeIfPresent(String.self, forKey: .devName)
+            ?? (try values.decodeIfPresent(String.self, forKey: .name))
+            ?? (try values.decodeIfPresent(String.self, forKey: .pname))
+        expireTime = try values.decodeIfPresent(Int.self, forKey: .expireTime)
+        planSelected = try values.decodeIfPresent(String.self, forKey: .planSelected)
+        certType = try values.decodeIfPresent(String.self, forKey: .certType)
+            ?? (try values.decodeIfPresent(String.self, forKey: .devCertType))
+        udid = try values.decodeIfPresent(String.self, forKey: .udid)
+        usesPrimarySigningFields = !(primaryP12?.isEmpty ?? true) && !(primaryProvision?.isEmpty ?? true)
     }
 }
 
@@ -117,13 +148,16 @@ enum WolFoxCertificateService {
 
             do {
                 let decoder = JSONDecoder()
-                let certificate: WolFoxRemoteCertificate
+                let certificates: [WolFoxRemoteCertificate]
                 if let list = try? decoder.decode([WolFoxRemoteCertificate].self, from: data) {
-                    guard let first = list.first else { throw WolFoxCertificateError.unavailableForDevice }
-                    certificate = first
+                    certificates = list
                 } else {
-                    certificate = try decoder.decode(WolFoxRemoteCertificate.self, from: data)
+                    certificates = [try decoder.decode(WolFoxRemoteCertificate.self, from: data)]
                 }
+
+                let certificate = certificates.first(where: { $0.usesPrimarySigningFields && $0.hasSigningAssets })
+                    ?? certificates.first(where: { $0.hasSigningAssets })
+                guard let certificate else { throw WolFoxCertificateError.unavailableForDevice }
                 DispatchQueue.main.async { completion(.success(certificate)) }
             } catch {
                 DispatchQueue.main.async {
