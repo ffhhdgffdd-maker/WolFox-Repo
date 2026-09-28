@@ -1,10 +1,16 @@
 {
   "name": "WolFox Repo",
   "identifier": "fun.repo.p3nd.wolfoxrepo",
-  "subtitle": "المصدر الموثوق لتطبيقات WolFox المعتمدة.",
-  "description": "The WolFox application catalog is published from https://repo.p3nd.fun/source.php.",
+  "subtitle": "مصدر WolFox المحلي الموثوق — v6.0.0",
+  "description": "The WolFox v6.0.0 application catalog is published from https://repo.p3nd.fun/source.php and accepts repository-hosted IPA files only.",
   "website": "https://repo.p3nd.fun",
   "tintColor": "2D6BFF",
   "apps": [],
-  "news": []
+  "news": [
+    {
+      "title": "WolFox v6.0.0",
+      "identifier": "wolfox-v6-release",
+      "caption": "واجهة مصادر محدثة مع مزامنة مباشرة للكتالوج المحلي."
+    }
+  ]
 }

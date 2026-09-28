@@ -23,6 +23,7 @@ struct SourcesView: View {
             NBListAdaptable {
                 Section {
                     WolFoxSourceBadge()
+                    WolFoxConnectionCard()
                 }
 
                 Section {

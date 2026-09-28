@@ -44,7 +44,7 @@ struct WolFoxSourceBadge: View {
                     Text("WolFox Repo")
                         .font(.headline)
                         .foregroundStyle(.primary)
-                    Text("عرض مصدر التطبيقات")
+                    Text("مصدر التطبيقات الموثوق")
                         .font(.caption)
                         .foregroundStyle(.secondary)
                 }
@@ -56,5 +56,59 @@ struct WolFoxSourceBadge: View {
             .contentShape(Rectangle())
         }
         .accessibilityHint("يفتح رابط مصدر WolFox في المتصفح")
+    }
+}
+
+struct WolFoxConnectionCard: View {
+    @State private var isSyncing = false
+    @State private var detail = "المصدر جاهز لتحديث الكتالوج"
+
+    var body: some View {
+        HStack(spacing: 12) {
+            Image(systemName: "shareplay")
+                .font(.title3.weight(.semibold))
+                .foregroundStyle(Color(red: 0.18, green: 0.42, blue: 1.0))
+                .frame(width: 42, height: 42)
+                .background(Color.accentColor.opacity(0.12), in: RoundedRectangle(cornerRadius: 12, style: .continuous))
+
+            VStack(alignment: .leading, spacing: 3) {
+                Text("دمج WolFox v6.0.0")
+                    .font(.subheadline.weight(.semibold))
+                Text(detail)
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                    .lineLimit(2)
+            }
+
+            Spacer(minLength: 8)
+
+            Button {
+                syncRepository()
+            } label: {
+                if isSyncing {
+                    ProgressView()
+                        .controlSize(.small)
+                } else {
+                    Image(systemName: "arrow.triangle.2.circlepath")
+                        .font(.body.weight(.semibold))
+                }
+            }
+            .buttonStyle(.bordered)
+            .tint(Color.accentColor)
+            .disabled(isSyncing)
+            .accessibilityLabel("تحديث مصدر WolFox")
+        }
+        .padding(.vertical, 3)
+    }
+
+    private func syncRepository() {
+        isSyncing = true
+        detail = "جارٍ مزامنة مصدر WolFox…"
+        WolFoxRepository.refreshSource {
+            DispatchQueue.main.async {
+                isSyncing = false
+                detail = "تم تحديث الكتالوج من repo.p3nd.fun"
+            }
+        }
     }
 }

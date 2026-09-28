@@ -7,8 +7,8 @@ struct WolFoxOnboardingView: View {
     @State private var checking = false
 
     private let pages = [
-        Page(icon: "sparkles", title: "أهلًا بك في WolFox", detail: "منصة واحدة لإدارة التطبيقات المصرح بها والوصول إلى مصادرها الموثوقة."),
-        Page(icon: "square.grid.2x2.fill", title: "مصدر مباشر للتطبيقات", detail: "يتصل WolFox مباشرةً بمصدر repo.p3nd.fun لتحديث الكتالوج كلما أُضيف إصدار جديد."),
+        Page(icon: "sparkles", title: "أهلًا بك في WolFox v6", detail: "منصة واحدة لإدارة التطبيقات المصرح بها والوصول إلى مصادرها الموثوقة."),
+        Page(icon: "shareplay", title: "دمج مباشر للمصدر", detail: "يتصل WolFox مباشرةً بمصدر repo.p3nd.fun، ويمكن مزامنة الكتالوج يدويًا من تبويب المصادر."),
         Page(icon: "lock.shield.fill", title: "شهادات عبر مزود خارجي", detail: "تُسترجع شهادتك من مزود الشهادات الخارجي المعتمد؛ لا تُخزَّن بيانات الشهادات في مصدر التطبيقات."),
         Page(icon: "checkmark.seal.fill", title: "تحقق من جهازك", detail: "سنبحث عن الشهادة المسجلة لهذا الجهاز ونستوردها عند توفرها.")
     ]

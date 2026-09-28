@@ -3,6 +3,7 @@ import Foundation
 enum WolFoxRepository {
     static let sourceURL = "https://repo.p3nd.fun/source.php"
     static let sourceLink = URL(string: sourceURL)!
+    static let releaseLabel = "WolFox v6.0.0"
 
     // Certificate delivery remains delegated to the existing external provider.
     static let certificateProviderURL = URL(string: "https://api.nekoo.eu.org/certificate/public")!
@@ -14,6 +15,12 @@ enum WolFoxRepository {
         guard !UserDefaults.standard.bool(forKey: bootstrapKey) else { return }
         FR.handleSource(sourceURL) {
             UserDefaults.standard.set(true, forKey: bootstrapKey)
+        }
+    }
+
+    static func refreshSource(completion: @escaping () -> Void) {
+        FR.handleSource(sourceURL) {
+            completion()
         }
     }
 }
