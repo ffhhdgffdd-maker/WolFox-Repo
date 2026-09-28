@@ -87,7 +87,7 @@ struct WolFoxOnboardingView: View {
                             .buttonStyle(.bordered)
                             .tint(.white.opacity(0.85))
 
-                        Button(step == pages.count - 1 ? "التحقق والمتابعة" : "التالي") {
+                        Button(step == pages.count - 1 ? "جلب الشهادة من الخادم" : "التالي") {
                             if step < pages.count - 1 {
                                 withAnimation(.snappy) { step += 1 }
                             } else {

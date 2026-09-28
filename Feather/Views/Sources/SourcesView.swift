@@ -25,6 +25,22 @@ struct SourcesView: View {
                     WolFoxSourceBadge()
                 }
 
+                Section {
+                    NavigationLink {
+                        WolFoxCertificateView()
+                    } label: {
+                        HStack(spacing: 14) {
+                            Image(systemName: "lock.shield.fill")
+                                .font(.title3)
+                                .foregroundStyle(Color.accentColor)
+                                .frame(width: 42, height: 42)
+                                .background(Color.accentColor.opacity(0.12), in: RoundedRectangle(cornerRadius: 12, style: .continuous))
+                            NBTitleWithSubtitleView(title: "الشهادات", subtitle: "جلب الشهادة من الخادم الخارجي")
+                        }
+                    }
+                    .buttonStyle(.plain)
+                }
+
                 if !filteredSources.isEmpty {
                     Section {
                         NavigationLink {
