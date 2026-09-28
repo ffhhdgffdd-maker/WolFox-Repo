@@ -45,28 +45,57 @@ enum WolFoxCertificateError: LocalizedError {
 enum WolFoxCertificateService {
     static let endpoint = WolFoxRepository.certificateProviderURL
     static let p12Password = "1"
+    private static let installationIdentifierKey = "WolFox.installIdentifier"
+    private static let certificateUDIDKey = "WolFox.certificateUDID"
 
     static var providerName: String {
         endpoint.host ?? "خادم الشهادات الخارجي"
     }
 
     static func deviceIdentifier() -> String {
-        let key = "WolFox.installIdentifier"
-        if let value = UserDefaults.standard.string(forKey: key), !value.isEmpty { return value }
+        if let value = UserDefaults.standard.string(forKey: installationIdentifierKey), !value.isEmpty { return value }
         let value = UIDevice.current.identifierForVendor?.uuidString ?? UUID().uuidString
-        UserDefaults.standard.set(value, forKey: key)
+        UserDefaults.standard.set(value, forKey: installationIdentifierKey)
         return value
     }
 
-    static func maskedDeviceIdentifier() -> String {
-        let value = deviceIdentifier()
+    static var registeredUDID: String? {
+        let value = UserDefaults.standard.string(forKey: certificateUDIDKey)?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+        return isValidUDID(value) ? value : nil
+    }
+
+    static var usesRegisteredUDID: Bool {
+        registeredUDID != nil
+    }
+
+    static func certificateLookupIdentifier() -> String {
+        registeredUDID ?? deviceIdentifier()
+    }
+
+    static func saveRegisteredUDID(_ value: String) -> Bool {
+        let normalized = value.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard isValidUDID(normalized) else { return false }
+        UserDefaults.standard.set(normalized, forKey: certificateUDIDKey)
+        return true
+    }
+
+    static func clearRegisteredUDID() {
+        UserDefaults.standard.removeObject(forKey: certificateUDIDKey)
+    }
+
+    static func maskedLookupIdentifier() -> String {
+        let value = certificateLookupIdentifier()
         guard value.count > 12 else { return value }
         return "\(value.prefix(8))••••\(value.suffix(4))"
     }
 
+    private static func isValidUDID(_ value: String) -> Bool {
+        value.range(of: "^[A-Za-z0-9-]{16,64}$", options: .regularExpression) != nil
+    }
+
     static func fetch(completion: @escaping (Result<WolFoxRemoteCertificate, Error>) -> Void) {
         var parts = URLComponents(url: endpoint, resolvingAgainstBaseURL: false)!
-        parts.queryItems = [URLQueryItem(name: "udid", value: deviceIdentifier())]
+        parts.queryItems = [URLQueryItem(name: "udid", value: certificateLookupIdentifier())]
 
         URLSession.shared.dataTask(with: parts.url!) { data, response, error in
             if let error {

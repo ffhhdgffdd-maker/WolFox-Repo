@@ -4,6 +4,9 @@ import UIKit
 struct WolFoxCertificateView: View {
     @State private var phase: FetchPhase = .ready
     @State private var copiedDeviceIdentifier = false
+    @State private var presentsUDIDEditor = false
+    @State private var suppliedUDID = ""
+    @State private var udidError: String?
 
     private var isWorking: Bool {
         switch phase {
@@ -12,6 +15,10 @@ struct WolFoxCertificateView: View {
         default:
             return false
         }
+    }
+
+    private var identifierMode: String {
+        WolFoxCertificateService.usesRegisteredUDID ? "UDID مسجل" : "معرف تثبيت WolFox"
     }
 
     var body: some View {
@@ -41,10 +48,13 @@ struct WolFoxCertificateView: View {
                 .padding(16)
                 .background(Color(uiColor: .secondarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 18, style: .continuous))
 
-                VStack(alignment: .leading, spacing: 6) {
-                    Text("تفعيل جهاز جديد")
+                VStack(alignment: .leading, spacing: 7) {
+                    Text("تفعيل جهاز عبر UDID")
                         .font(.subheadline.bold())
-                    Text("انسخ معرف الجهاز، سجّله لدى مزوّد الشهادات الخارجي، ثم اضغط «جلب الشهادة من الخادم». لا تُرسل ملفات P12 أو كلمات المرور داخل التطبيق.")
+                    Text("لا يستطيع iOS كشف UDID العتادي من داخل التطبيق. إن كان خادم الشهادات يتطلب UDID، انسخه من Finder أو Xcode أو سجل اقتران موثوق، ثم الصقه هنا بموافقتك.")
+                        .font(.footnote)
+                        .foregroundStyle(.secondary)
+                    Text("بعد حفظ UDID، يستخدم WolFox هذا المعرّف فقط عند طلب الشهادة من الخادم.")
                         .font(.footnote)
                         .foregroundStyle(.secondary)
                 }
@@ -80,6 +90,9 @@ struct WolFoxCertificateView: View {
         }
         .navigationTitle("الشهادات")
         .navigationBarTitleDisplayMode(.inline)
+        .sheet(isPresented: $presentsUDIDEditor) {
+            udidEditor
+        }
     }
 
     private var statusCard: some View {
@@ -120,23 +133,84 @@ struct WolFoxCertificateView: View {
                 .frame(width: 20)
                 .foregroundStyle(Color.accentColor)
             VStack(alignment: .leading, spacing: 2) {
-                Text("معرف تسجيل الجهاز")
+                Text(identifierMode)
                     .font(.caption)
                     .foregroundStyle(.secondary)
-                Text(WolFoxCertificateService.maskedDeviceIdentifier())
+                Text(WolFoxCertificateService.maskedLookupIdentifier())
                     .font(.subheadline.weight(.medium))
             }
             Spacer(minLength: 0)
             Button {
-                UIPasteboard.general.string = WolFoxCertificateService.deviceIdentifier()
+                UIPasteboard.general.string = WolFoxCertificateService.certificateLookupIdentifier()
                 copiedDeviceIdentifier = true
             } label: {
-                Label(copiedDeviceIdentifier ? "تم النسخ" : "نسخ", systemImage: copiedDeviceIdentifier ? "checkmark" : "doc.on.doc")
-                    .labelStyle(.iconOnly)
+                Image(systemName: copiedDeviceIdentifier ? "checkmark" : "doc.on.doc")
             }
             .buttonStyle(.bordered)
-            .accessibilityLabel(copiedDeviceIdentifier ? "تم نسخ معرف الجهاز" : "نسخ معرف الجهاز")
+            .accessibilityLabel(copiedDeviceIdentifier ? "تم نسخ المعرّف" : "نسخ المعرّف")
+
+            Button {
+                suppliedUDID = WolFoxCertificateService.registeredUDID ?? ""
+                udidError = nil
+                presentsUDIDEditor = true
+            } label: {
+                Image(systemName: "pencil")
+            }
+            .buttonStyle(.bordered)
+            .accessibilityLabel("إدخال أو تعديل UDID")
         }
+    }
+
+    private var udidEditor: some View {
+        NavigationStack {
+            Form {
+                Section("UDID") {
+                    TextField("الصق UDID هنا", text: $suppliedUDID)
+                        .textInputAutocapitalization(.characters)
+                        .autocorrectionDisabled()
+                        .keyboardType(.asciiCapable)
+                    if let udidError {
+                        Text(udidError)
+                            .font(.footnote)
+                            .foregroundStyle(.red)
+                    }
+                }
+
+                Section {
+                    Text("يُحفظ هذا المعرف محليًا داخل WolFox ويُرسل فقط إلى خادم الشهادات عند الضغط على زر الجلب.")
+                        .font(.footnote)
+                        .foregroundStyle(.secondary)
+                }
+
+                if WolFoxCertificateService.usesRegisteredUDID {
+                    Section {
+                        Button("إزالة UDID والعودة إلى معرف WolFox", role: .destructive) {
+                            WolFoxCertificateService.clearRegisteredUDID()
+                            presentsUDIDEditor = false
+                        }
+                    }
+                }
+            }
+            .navigationTitle("UDID الجهاز")
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button("إلغاء") { presentsUDIDEditor = false }
+                }
+                ToolbarItem(placement: .confirmationAction) {
+                    Button("حفظ") { saveUDID() }
+                }
+            }
+        }
+    }
+
+    private func saveUDID() {
+        guard WolFoxCertificateService.saveRegisteredUDID(suppliedUDID) else {
+            udidError = "أدخل UDID صالحًا (16–64 حرفًا أو رقمًا، دون مسافات)."
+            return
+        }
+        copiedDeviceIdentifier = false
+        presentsUDIDEditor = false
+        phase = .ready
     }
 
     private func fetchFromServer() {
