@@ -65,11 +65,11 @@ struct WolFoxConnectionCard: View {
 
     var body: some View {
         HStack(spacing: 12) {
-            Image(systemName: "shareplay")
+            Image(systemName: "personalhotspot")
                 .font(.title3.weight(.semibold))
-                .foregroundStyle(Color(red: 0.18, green: 0.42, blue: 1.0))
+                .foregroundStyle(Color(red: 0.16, green: 0.80, blue: 0.38))
                 .frame(width: 42, height: 42)
-                .background(Color.accentColor.opacity(0.12), in: RoundedRectangle(cornerRadius: 12, style: .continuous))
+                .background(Color(red: 0.16, green: 0.80, blue: 0.38).opacity(0.12), in: RoundedRectangle(cornerRadius: 12, style: .continuous))
 
             VStack(alignment: .leading, spacing: 3) {
                 Text("دمج WolFox v6.0.0")

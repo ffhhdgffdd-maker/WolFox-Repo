@@ -33,11 +33,12 @@ struct WolFoxRemoteCertificate: Decodable {
         let values = try decoder.container(keyedBy: CodingKeys.self)
         let primaryP12 = try values.decodeIfPresent(String.self, forKey: .devp12)
         let primaryProvision = try values.decodeIfPresent(String.self, forKey: .devmp)
+        let fallbackP12 = try values.decodeIfPresent(String.self, forKey: .p12)
+        let fallbackProvision = try values.decodeIfPresent(String.self, forKey: .mobileProvision)
+        let extraProvision = try values.decodeIfPresent(String.self, forKey: .extraMobileProvision)
 
-        devp12 = primaryP12 ?? (try values.decodeIfPresent(String.self, forKey: .p12))
-        devmp = primaryProvision
-            ?? (try values.decodeIfPresent(String.self, forKey: .mobileProvision))
-            ?? (try values.decodeIfPresent(String.self, forKey: .extraMobileProvision))
+        devp12 = primaryP12 ?? fallbackP12
+        devmp = primaryProvision ?? fallbackProvision ?? extraProvision
         devName = try values.decodeIfPresent(String.self, forKey: .devName)
             ?? (try values.decodeIfPresent(String.self, forKey: .name))
             ?? (try values.decodeIfPresent(String.self, forKey: .pname))
