@@ -5,6 +5,8 @@ struct WolFoxOnboardingView: View {
     @State private var step = 0
     @State private var status = "جاهز للتحقق من هذا الجهاز"
     @State private var checking = false
+    @State private var pendingCertificate: WolFoxRemoteCertificate?
+    @State private var presentsImportPassword = false
 
     private let pages = [
         Page(icon: "sparkles", title: "أهلًا بك في WolFox v6", detail: "منصة واحدة لإدارة التطبيقات المصرح بها والوصول إلى مصادرها الموثوقة."),
@@ -103,6 +105,24 @@ struct WolFoxOnboardingView: View {
                 .frame(maxWidth: 540)
             }
             .preferredColorScheme(.dark)
+            .sheet(isPresented: $presentsImportPassword) {
+                if let certificate = pendingCertificate {
+                    WolFoxCertificateImportPasswordSheet(
+                        certificate: certificate,
+                        onCancel: {
+                            pendingCertificate = nil
+                            checking = false
+                            status = "تم إلغاء استيراد الشهادة."
+                        },
+                        onImported: {
+                            pendingCertificate = nil
+                            checking = false
+                            status = "تم استيراد الشهادة بنجاح"
+                            finished = true
+                        }
+                    )
+                }
+            }
         }
     }
 
@@ -112,16 +132,9 @@ struct WolFoxOnboardingView: View {
         WolFoxCertificateService.fetch { result in
             switch result {
             case .success(let certificate):
-                status = "تم العثور على شهادة الجهاز، جارٍ الاستيراد…"
-                WolFoxCertificateService.importCertificate(certificate) { error in
-                    checking = false
-                    if let error {
-                        status = error.localizedDescription
-                    } else {
-                        status = "تم استيراد الشهادة بنجاح"
-                        finished = true
-                    }
-                }
+                pendingCertificate = certificate
+                status = "تم العثور على الشهادة. أدخل كلمة مرور ملف P12 للاستيراد."
+                presentsImportPassword = true
             case .failure(let error):
                 checking = false
                 status = error.localizedDescription
