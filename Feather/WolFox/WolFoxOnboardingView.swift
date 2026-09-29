@@ -87,7 +87,7 @@ struct WolFoxOnboardingView: View {
                             .buttonStyle(.bordered)
                             .tint(.white.opacity(0.85))
 
-                        Button(step == pages.count - 1 ? "جلب الشهادة من الخادم" : "التالي") {
+                        Button(step == pages.count - 1 ? "التحقق من الجهاز" : "التالي") {
                             if step < pages.count - 1 {
                                 withAnimation(.snappy) { step += 1 }
                             } else {
@@ -108,11 +108,11 @@ struct WolFoxOnboardingView: View {
 
     private func checkDevice() {
         checking = true
-        status = "جارٍ الاتصال بمزود الشهادات الخارجي…"
+        status = "جارٍ التحقق من الجهاز والشهادة…"
         WolFoxCertificateService.fetch { result in
             switch result {
             case .success(let certificate):
-                status = "تم العثور على الشهادة، جارٍ الاستيراد…"
+                status = "تم العثور على شهادة الجهاز، جارٍ الاستيراد…"
                 WolFoxCertificateService.importCertificate(certificate) { error in
                     checking = false
                     if let error {
