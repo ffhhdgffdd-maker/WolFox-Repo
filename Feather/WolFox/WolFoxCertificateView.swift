@@ -65,7 +65,7 @@ struct WolFoxCertificateView: View {
                 VStack(alignment: .leading, spacing: 7) {
                     Label("تنبيه أمني بشأن ملفات التعريف", systemImage: "exclamationmark.shield.fill")
                         .font(.subheadline.bold())
-                    Text("لا تثبّت ملف إعدادات (.mobileconfig) للحصول على UDID؛ فقد يطلب معرّفات مثل IMEI وICCID ويرسلها إلى خادم خارجي. WolFox لا يحتاج إلى تثبيت ملف تعريف ولا يطلب IMEI أو ICCID. عند طلب الشهادة، يتضمن طلب WolFox المعرّف الظاهر هنا ويرسله إلى خادم الشهادات المعروض أعلاه.")
+                    Text("ملف UDID الذي تمت مراجعته يطلب UDID وIMEI وICCID وPRODUCT ويرسلها إلى nekoo.eu.org. رغم أن الملف يذكر apple.com كجهة، شهادة توقيعه تخص nekoo.eu.org وانتهت صلاحيتها في 11 مايو 2026؛ كما أن commonName المرفق لا يطابقها. لا تثبّت هذا الملف. WolFox لا يحتاج إلى تثبيت ملف تعريف ولا يطلب IMEI أو ICCID. عند طلب الشهادة، يتضمن طلب WolFox المعرّف الظاهر هنا ويرسله إلى خادم الشهادات المعروض أعلاه.")
                         .font(.footnote)
                         .foregroundStyle(.secondary)
                 }
