@@ -62,6 +62,17 @@ struct WolFoxCertificateView: View {
                 .padding(15)
                 .background(Color.accentColor.opacity(0.08), in: RoundedRectangle(cornerRadius: 15, style: .continuous))
 
+                VStack(alignment: .leading, spacing: 7) {
+                    Label("تنبيه أمني بشأن ملفات التعريف", systemImage: "exclamationmark.shield.fill")
+                        .font(.subheadline.bold())
+                    Text("لا تثبّت ملف إعدادات (.mobileconfig) للحصول على UDID؛ فقد يطلب معرّفات مثل IMEI وICCID ويرسلها إلى خادم خارجي. WolFox لا يحتاج إلى تثبيت ملف تعريف ولا يطلب IMEI أو ICCID. عند طلب الشهادة، يتضمن طلب WolFox المعرّف الظاهر هنا ويرسله إلى خادم الشهادات المعروض أعلاه.")
+                        .font(.footnote)
+                        .foregroundStyle(.secondary)
+                }
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .padding(15)
+                .background(Color.orange.opacity(0.10), in: RoundedRectangle(cornerRadius: 15, style: .continuous))
+
                 Button(action: fetchFromServer) {
                     HStack(spacing: 9) {
                         if isWorking {
