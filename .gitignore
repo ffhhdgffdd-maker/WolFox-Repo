@@ -3,3 +3,15 @@ DerivedData/
 *.xcuserstate
 xcuserdata/
 .DS_Store
+
+# Server runtime and secrets
+server/.env
+server/data/*
+!server/data/.gitignore
+*.sqlite
+*.sqlite3
+*.db
+*.p12
+*.mobileprovision
+*.pem
+*.key

@@ -1,0 +1,9 @@
+Options -Indexes
+
+<FilesMatch "\.(sqlite|sqlite3|db|env|log|key|pem|p12)$">
+    Require all denied
+</FilesMatch>
+
+<If "-f '%{REQUEST_FILENAME}'">
+    Header always set Cache-Control "no-store"
+</If>

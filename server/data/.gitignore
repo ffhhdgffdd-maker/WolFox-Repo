@@ -1,0 +1,7 @@
+# Runtime data must stay on the server and never enter Git.
+*.sqlite
+*.sqlite3
+*.db
+*.sqlite-*
+*
+!.gitignore
