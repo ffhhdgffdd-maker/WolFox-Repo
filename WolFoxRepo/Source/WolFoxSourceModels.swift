@@ -12,6 +12,7 @@ struct WolFoxManifest: Codable {
 
 struct WolFoxApp: Codable, Identifiable {
     var id: String { bundleIdentifier }
+    let platform: String?
     let name: String
     let bundleIdentifier: String
     let developerName: String?
@@ -31,4 +32,6 @@ struct WolFoxVersion: Codable {
     let downloadURL: String
     let size: Int?
     let minOSVersion: String?
+
+    var minAndroidVersion: String? { minOSVersion }
 }

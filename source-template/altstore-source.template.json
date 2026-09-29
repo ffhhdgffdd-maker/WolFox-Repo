@@ -2,13 +2,14 @@
   "name": "WolFox Repo",
   "identifier": "fun.repo.p3nd.wolfoxrepo",
   "subtitle": "WolFox application repository",
-  "description": "Replace app values with authorized WolFox releases.",
+  "description": "Android-only WolFox catalog. Replace app values with authorized APK releases.",
   "website": "https://github.com/ffhhdgffdd-maker/WolFox-Repo",
   "tintColor": "007AFF",
   "apps": [
     {
+      "platform": "android",
       "name": "APP_NAME",
-      "bundleIdentifier": "APP_BUNDLE_ID",
+      "bundleIdentifier": "APPLICATION_ID",
       "developerName": "WolFox",
       "subtitle": "APP_SUBTITLE",
       "localizedDescription": "APP_DESCRIPTION",
@@ -21,9 +22,9 @@
           "buildVersion": "1",
           "date": "2026-09-24",
           "localizedDescription": "Initial release",
-          "downloadURL": "GITHUB_RELEASE_IPA_HTTPS_URL",
+          "downloadURL": "AUTHORIZED_APK_HTTPS_URL",
           "size": 0,
-          "minOSVersion": "16.0"
+          "minOSVersion": "8.0"
         }
       ],
       "appPermissions": {

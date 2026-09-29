@@ -5,26 +5,30 @@ function wolfoxBuildSource(array $settings, array $apps): array {
     $publicApps = [];
     foreach ($apps as $app) {
         if (!empty($app['hidden'])) continue;
+        // WolFox Repo is intentionally Android-only. Never publish iOS/IPA entries.
+        $platform = strtolower(trim((string)($app['platform'] ?? 'android')));
+        if ($platform !== 'android') continue;
 
         $version = [
             'version' => (string)($app['version'] ?? '1.0.0'),
             'buildVersion' => (string)($app['buildVersion'] ?? '1'),
             'date' => (string)($app['date'] ?? date('Y-m-d')),
             'localizedDescription' => (string)($app['versionDescription'] ?? ''),
-            'downloadURL' => (string)($app['downloadURL'] ?? ''),
+            'downloadURL' => (string)($app['apkURL'] ?? $app['downloadURL'] ?? ''),
             'size' => (int)($app['size'] ?? 0),
-            'minOSVersion' => (string)($app['minOSVersion'] ?? '16.0'),
+            'minOSVersion' => (string)($app['minAndroidVersion'] ?? $app['minOSVersion'] ?? '8.0'),
         ];
 
         $publicApps[] = [
+            'platform' => 'android',
             'name' => (string)($app['name'] ?? ''),
-            'bundleIdentifier' => (string)($app['bundleIdentifier'] ?? ''),
+            'bundleIdentifier' => (string)($app['applicationId'] ?? $app['bundleIdentifier'] ?? ''),
             'developerName' => (string)($app['developerName'] ?? 'WolFox'),
             'subtitle' => (string)($app['subtitle'] ?? ''),
             'localizedDescription' => (string)($app['description'] ?? ''),
             'iconURL' => (string)($app['iconURL'] ?? ''),
             'tintColor' => (string)($app['tintColor'] ?? '007AFF'),
-            'category' => (string)($app['category'] ?? 'utilities'),
+            'category' => (string)($app['category'] ?? 'tools'),
             'versions' => [$version],
             'appPermissions' => ['entitlements' => [], 'privacy' => (object)[]],
         ];
@@ -33,8 +37,8 @@ function wolfoxBuildSource(array $settings, array $apps): array {
     return [
         'name' => 'WolFox Repo',
         'identifier' => 'fun.repo.p3nd.wolfoxrepo',
-        'subtitle' => 'WolFox application repository',
-        'description' => 'Application source for WolFox Repo.',
+        'subtitle' => 'WolFox Android application repository',
+        'description' => 'Android-only application source for WolFox Repo. Authorized HTTPS APK releases only.',
         'website' => 'https://github.com/ffhhdgffdd-maker/WolFox-Repo',
         'tintColor' => '007AFF',
         'apps' => $publicApps,

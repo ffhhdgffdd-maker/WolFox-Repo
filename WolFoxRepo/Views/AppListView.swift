@@ -4,6 +4,9 @@ struct AppListView: View {
     @StateObject private var store = WolFoxSourceStore()
     private let sourceURL = URL(string: "https://repo.p3nd.fun/source.php")!
     private let brandURL = URL(string: "https://repo.p3nd.fun/assets/wolfox-mark.png")!
+    private var androidApps: [WolFoxApp] {
+        (store.manifest?.apps ?? []).filter { ($0.platform ?? "android").lowercased() == "android" }
+    }
 
     var body: some View {
         NavigationStack {
@@ -27,19 +30,22 @@ struct AppListView: View {
                                 VStack(alignment: .leading, spacing: 5) {
                                     Text("WolFox Repo")
                                         .font(.title3.bold())
-                                    Text(store.manifest?.subtitle ?? "المصدر الموثوق للتطبيقات")
+                                    Text(store.manifest?.subtitle ?? "متجر WolFox لتطبيقات Android")
                                         .font(.caption)
                                         .foregroundStyle(.secondary)
                                         .lineLimit(2)
                                     Link("فتح رابط المصدر", destination: sourceURL)
                                         .font(.caption.weight(.semibold))
+                                    Text("Android فقط • APK موثوق")
+                                        .font(.caption2.weight(.medium))
+                                        .foregroundStyle(.blue)
                                 }
                             }
                             .padding(.vertical, 5)
                         }
 
                         Section("التطبيقات المنشورة") {
-                            ForEach(store.manifest?.apps ?? []) { app in
+                            ForEach(androidApps) { app in
                                 NavigationLink {
                                     AppDetailsView(app: app)
                                 } label: {

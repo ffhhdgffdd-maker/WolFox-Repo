@@ -1,8 +1,8 @@
 {
   "name": "WolFox Repo",
   "identifier": "fun.repo.p3nd.wolfoxrepo",
-  "subtitle": "مصدر WolFox المحلي الموثوق — v6.0.0",
-  "description": "The WolFox v6.0.0 application catalog is published from https://repo.p3nd.fun/source.php and accepts repository-hosted IPA files only.",
+  "subtitle": "متجر WolFox لتطبيقات Android — v6.0.0",
+  "description": "Android-only WolFox catalog. The store accepts authorized HTTPS APK releases and does not publish iOS or IPA files.",
   "website": "https://repo.p3nd.fun",
   "tintColor": "2D6BFF",
   "apps": [],

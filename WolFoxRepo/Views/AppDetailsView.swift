@@ -20,6 +20,7 @@ struct AppDetailsView: View {
                     VStack(alignment: .leading) {
                         Text(app.name).font(.title3.bold())
                         Text(app.developerName ?? "WolFox").foregroundStyle(.secondary)
+                        Text("Android").font(.caption.weight(.semibold)).foregroundStyle(.blue)
                     }
                 }
             }
@@ -32,10 +33,10 @@ struct AppDetailsView: View {
                 Section("آخر إصدار") {
                     LabeledContent("الإصدار", value: version.version)
                     if let minOS = version.minOSVersion {
-                        LabeledContent("النظام", value: "iOS \(minOS)+")
+                        LabeledContent("النظام", value: "Android \(minOS)+")
                     }
                     if let url = URL(string: version.downloadURL) {
-                        Link("تنزيل", destination: url)
+                        Link("تنزيل APK", destination: url)
                             .fontWeight(.semibold)
                     }
                 }

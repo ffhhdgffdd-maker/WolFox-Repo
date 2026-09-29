@@ -1,7 +1,7 @@
 # WolFox Repo
 
-مستودع WolFox Repo لواجهة عرض التطبيقات ومصدر التطبيقات.
+مستودع WolFox Repo لعرض وتوزيع تطبيقات **Android فقط**.
 
 ## Source
 
-سيتم نشر ملف المصدر في `app-repo.json` وربطه بتطبيق WolFox Repo.
+سيتم نشر ملف المصدر في `app-repo.json` وربطه بتطبيق WolFox Repo. لا يقبل الكتالوج ملفات IPA أو تطبيقات iOS.
