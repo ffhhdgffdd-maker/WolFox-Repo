@@ -7,10 +7,12 @@ struct WolFoxCertificateView: View {
     @State private var presentsUDIDEditor = false
     @State private var suppliedUDID = ""
     @State private var udidError: String?
+    @State private var pendingCertificate: WolFoxRemoteCertificate?
+    @State private var presentsImportPassword = false
 
     private var isWorking: Bool {
         switch phase {
-        case .loading, .importing:
+        case .loading, .importing, .awaitingPassword:
             return true
         default:
             return false
@@ -88,6 +90,21 @@ struct WolFoxCertificateView: View {
                 .buttonStyle(.borderedProminent)
                 .tint(Color(red: 0.18, green: 0.42, blue: 1.0))
                 .disabled(isWorking)
+                .sheet(isPresented: $presentsImportPassword) {
+                    if let certificate = pendingCertificate {
+                        WolFoxCertificateImportPasswordSheet(
+                            certificate: certificate,
+                            onCancel: {
+                                pendingCertificate = nil
+                                phase = .ready
+                            },
+                            onImported: {
+                                pendingCertificate = nil
+                                phase = .success(certificate.devName ?? "تم استيراد الشهادة")
+                            }
+                        )
+                    }
+                }
 
                 statusCard
 
@@ -229,16 +246,9 @@ struct WolFoxCertificateView: View {
         WolFoxCertificateService.fetch { result in
             switch result {
             case .success(let certificate):
-                phase = .importing(certificate.devName ?? "الشهادة المسجلة")
-                WolFoxCertificateService.importCertificate(certificate) { error in
-                    DispatchQueue.main.async {
-                        if let error {
-                            phase = .failure(error.localizedDescription)
-                        } else {
-                            phase = .success(certificate.devName ?? "تم استيراد الشهادة")
-                        }
-                    }
-                }
+                pendingCertificate = certificate
+                phase = .awaitingPassword
+                presentsImportPassword = true
             case .failure(let error):
                 phase = .failure(error.localizedDescription)
             }
@@ -249,6 +259,7 @@ struct WolFoxCertificateView: View {
         case ready
         case loading
         case importing(String)
+        case awaitingPassword
         case success(String)
         case failure(String)
 
@@ -260,6 +271,8 @@ struct WolFoxCertificateView: View {
                 return "جارٍ الاتصال بخادم الشهادات الخارجي…"
             case .importing(let name):
                 return "تم العثور على \(name). جارٍ التحقق والاستيراد…"
+            case .awaitingPassword:
+                return "أدخل كلمة مرور ملف P12 في النافذة لإكمال الاستيراد."
             case .success(let name):
                 return "نجح الاستيراد: \(name)."
             case .failure(let reason):
@@ -282,7 +295,7 @@ struct WolFoxCertificateView: View {
             switch self {
             case .ready:
                 return "info.circle.fill"
-            case .loading, .importing:
+            case .loading, .importing, .awaitingPassword:
                 return "arrow.triangle.2.circlepath"
             case .success:
                 return "checkmark.seal.fill"
@@ -295,7 +308,7 @@ struct WolFoxCertificateView: View {
             switch self {
             case .ready:
                 return .blue
-            case .loading, .importing:
+            case .loading, .importing, .awaitingPassword:
                 return .orange
             case .success:
                 return .green

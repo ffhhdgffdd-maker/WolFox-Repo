@@ -1,5 +1,6 @@
 import Foundation
 import UIKit
+import SwiftUI
 
 struct WolFoxRemoteCertificate: Decodable {
     let devp12: String?
@@ -69,14 +70,13 @@ enum WolFoxCertificateError: LocalizedError {
         case .incompletePayload:
             return "بيانات الشهادة المستلمة غير مكتملة."
         case .validationFailed:
-            return "تعذر التحقق من صحة الشهادة المستلمة."
+            return "تعذر فتح ملف P12 بكلمة المرور المدخلة. تحقق من كلمة المرور ثم أعد المحاولة."
         }
     }
 }
 
 enum WolFoxCertificateService {
     static let endpoint = WolFoxRepository.certificateProviderURL
-    static let p12Password = "1"
     private static let installationIdentifierKey = "WolFox.installIdentifier"
     private static let certificateUDIDKey = "WolFox.certificateUDID"
 
@@ -168,25 +168,111 @@ enum WolFoxCertificateService {
         }.resume()
     }
 
-    static func importCertificate(_ certificate: WolFoxRemoteCertificate, completion: @escaping (Error?) -> Void) {
-        guard let p12 = certificate.devp12,
-              let provision = certificate.devmp,
-              let p12URL = FileManager.default.decodeAndWrite(base64: p12, pathComponent: ".p12"),
-              let provisionURL = FileManager.default.decodeAndWrite(base64: provision, pathComponent: ".mobileprovision") else {
-            completion(WolFoxCertificateError.incompletePayload)
+    static func importCertificate(
+        _ certificate: WolFoxRemoteCertificate,
+        password: String,
+        completion: @escaping (Error?) -> Void
+    ) {
+        guard let p12Base64 = certificate.devp12,
+              let provisionBase64 = certificate.devmp,
+              let p12Data = Data(base64Encoded: p12Base64, options: .ignoreUnknownCharacters),
+              let provisionData = Data(base64Encoded: provisionBase64, options: .ignoreUnknownCharacters) else {
+            DispatchQueue.main.async { completion(WolFoxCertificateError.incompletePayload) }
             return
         }
-        guard FR.checkPasswordForCertificate(for: p12URL, with: p12Password, using: provisionURL) else {
-            completion(WolFoxCertificateError.validationFailed)
+
+        let temporaryDirectory = FileManager.default.temporaryDirectory
+            .appendingPathComponent("WolFoxCertificate-\(UUID().uuidString)", isDirectory: true)
+        let p12URL = temporaryDirectory.appendingPathComponent("certificate.p12")
+        let provisionURL = temporaryDirectory.appendingPathComponent("certificate.mobileprovision")
+
+        do {
+            try FileManager.default.createDirectory(at: temporaryDirectory, withIntermediateDirectories: true)
+            try p12Data.write(to: p12URL, options: .atomic)
+            try provisionData.write(to: provisionURL, options: .atomic)
+        } catch {
+            try? FileManager.default.removeItem(at: temporaryDirectory)
+            DispatchQueue.main.async { completion(error) }
             return
         }
+
+        guard FR.checkPasswordForCertificate(for: p12URL, with: password, using: provisionURL) else {
+            try? FileManager.default.removeItem(at: temporaryDirectory)
+            DispatchQueue.main.async { completion(WolFoxCertificateError.validationFailed) }
+            return
+        }
+
         FR.handleCertificateFiles(
             p12URL: p12URL,
             provisionURL: provisionURL,
-            p12Password: p12Password,
+            p12Password: password,
             certificateName: certificate.devName ?? "WolFox Device Certificate"
         ) { error in
-            completion(error)
+            try? FileManager.default.removeItem(at: temporaryDirectory)
+            DispatchQueue.main.async { completion(error) }
+        }
+    }
+}
+
+struct WolFoxCertificateImportPasswordSheet: View {
+    let certificate: WolFoxRemoteCertificate
+    let onCancel: () -> Void
+    let onImported: () -> Void
+
+    @Environment(\.dismiss) private var dismiss
+    @State private var password = ""
+    @State private var errorMessage: String?
+    @State private var isImporting = false
+
+    var body: some View {
+        NavigationStack {
+            Form {
+                Section("كلمة مرور الشهادة") {
+                    SecureField("كلمة مرور ملف P12", text: $password)
+                        .textContentType(.password)
+                        .textInputAutocapitalization(.never)
+                        .autocorrectionDisabled()
+                    Text("أدخل كلمة المرور التي زودك بها مصدر الشهادة. تُستخدم محليًا للتحقق والاستيراد ولا تُرسل في رابط أو إلى الخادم.")
+                        .font(.footnote)
+                        .foregroundStyle(.secondary)
+                    if let errorMessage {
+                        Text(errorMessage)
+                            .font(.footnote)
+                            .foregroundStyle(.red)
+                    }
+                }
+            }
+            .navigationTitle("استيراد الشهادة")
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button("إلغاء") {
+                        onCancel()
+                        dismiss()
+                    }
+                    .disabled(isImporting)
+                }
+                ToolbarItem(placement: .confirmationAction) {
+                    Button(isImporting ? "جارٍ الاستيراد…" : "استيراد") {
+                        importCertificate()
+                    }
+                    .disabled(isImporting)
+                }
+            }
+            .interactiveDismissDisabled(isImporting)
+        }
+    }
+
+    private func importCertificate() {
+        isImporting = true
+        errorMessage = nil
+        WolFoxCertificateService.importCertificate(certificate, password: password) { error in
+            if let error {
+                isImporting = false
+                errorMessage = error.localizedDescription
+            } else {
+                onImported()
+                dismiss()
+            }
         }
     }
 }
