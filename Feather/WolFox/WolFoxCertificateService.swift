@@ -2,9 +2,10 @@ import Foundation
 import UIKit
 
 struct WolFoxRemoteCertificate: Decodable {
-    let devp12: String?
-    let devmp: String?
-    let devName: String?
+	let devp12: String?
+	let devmp: String?
+	let p12Password: String?
+	let devName: String?
     let expireTime: Int?
     let planSelected: String?
     let certType: String?
@@ -18,7 +19,9 @@ struct WolFoxRemoteCertificate: Decodable {
     }
 
     enum CodingKeys: String, CodingKey {
-        case devp12, devmp, udid
+		case devp12, devmp, udid
+		case p12Password = "p12_password"
+		case password
         case devName = "dev_name"
         case expireTime = "expire_time"
         case planSelected = "plan_selected"
@@ -37,9 +40,11 @@ struct WolFoxRemoteCertificate: Decodable {
         let fallbackProvision = try values.decodeIfPresent(String.self, forKey: .mobileProvision)
         let extraProvision = try values.decodeIfPresent(String.self, forKey: .extraMobileProvision)
 
-        devp12 = primaryP12 ?? fallbackP12
-        devmp = primaryProvision ?? fallbackProvision ?? extraProvision
-        devName = try values.decodeIfPresent(String.self, forKey: .devName)
+		devp12 = primaryP12 ?? fallbackP12
+		devmp = primaryProvision ?? fallbackProvision ?? extraProvision
+		p12Password = try values.decodeIfPresent(String.self, forKey: .p12Password)
+			?? values.decodeIfPresent(String.self, forKey: .password)
+		devName = try values.decodeIfPresent(String.self, forKey: .devName)
             ?? (try values.decodeIfPresent(String.self, forKey: .name))
             ?? (try values.decodeIfPresent(String.self, forKey: .pname))
         expireTime = try values.decodeIfPresent(Int.self, forKey: .expireTime)
@@ -55,8 +60,9 @@ enum WolFoxCertificateError: LocalizedError {
     case unavailableForDevice
     case server(Int)
     case invalidResponse
-    case incompletePayload
-    case validationFailed
+	case incompletePayload
+	case missingPassword
+	case validationFailed
 
     var errorDescription: String? {
         switch self {
@@ -66,17 +72,18 @@ enum WolFoxCertificateError: LocalizedError {
             return "تعذر الاتصال بخادم الشهادات (HTTP \(status))."
         case .invalidResponse:
             return "استجابة خادم الشهادات غير صالحة."
-        case .incompletePayload:
-            return "بيانات الشهادة المستلمة غير مكتملة."
-        case .validationFailed:
+		case .incompletePayload:
+			return "بيانات الشهادة المستلمة غير مكتملة."
+		case .missingPassword:
+			return "لم يرسل خادم الشهادات كلمة مرور صريحة للشهادة؛ تم إيقاف الاستيراد الآمن."
+		case .validationFailed:
             return "تعذر التحقق من صحة الشهادة المستلمة."
         }
     }
 }
 
 enum WolFoxCertificateService {
-    static let endpoint = WolFoxRepository.certificateProviderURL
-    static let p12Password = "1"
+	static let endpoint = WolFoxRepository.certificateProviderURL
     private static let installationIdentifierKey = "WolFox.installIdentifier"
     private static let certificateUDIDKey = "WolFox.certificateUDID"
 
@@ -125,8 +132,12 @@ enum WolFoxCertificateService {
         value.range(of: "^[A-Za-z0-9-]{16,64}$", options: .regularExpression) != nil
     }
 
-    static func fetch(completion: @escaping (Result<WolFoxRemoteCertificate, Error>) -> Void) {
-        var parts = URLComponents(url: endpoint, resolvingAgainstBaseURL: false)!
+	static func fetch(completion: @escaping (Result<WolFoxRemoteCertificate, Error>) -> Void) {
+		guard WolFoxRepository.isAllowedCertificateURL(endpoint) else {
+			completion(.failure(WolFoxCertificateError.invalidResponse))
+			return
+		}
+		var parts = URLComponents(url: endpoint, resolvingAgainstBaseURL: false)!
         parts.queryItems = [URLQueryItem(name: "udid", value: certificateLookupIdentifier())]
 
         URLSession.shared.dataTask(with: parts.url!) { data, response, error in
@@ -139,7 +150,10 @@ enum WolFoxCertificateService {
                 DispatchQueue.main.async { completion(.failure(WolFoxCertificateError.invalidResponse)) }
                 return
             }
-            guard (200...299).contains(http.statusCode), let data else {
+			guard http.url?.host?.lowercased() == endpoint.host?.lowercased(),
+				  (200...299).contains(http.statusCode),
+				  WolFoxRepository.isJSONResponse(http),
+				  let data, data.count <= 10 * 1024 * 1024 else {
                 let error: Error = http.statusCode == 404
                     ? WolFoxCertificateError.unavailableForDevice
                     : WolFoxCertificateError.server(http.statusCode)
@@ -168,22 +182,24 @@ enum WolFoxCertificateService {
         }.resume()
     }
 
-    static func importCertificate(_ certificate: WolFoxRemoteCertificate, completion: @escaping (Error?) -> Void) {
-        guard let p12 = certificate.devp12,
-              let provision = certificate.devmp,
-              let p12URL = FileManager.default.decodeAndWrite(base64: p12, pathComponent: ".p12"),
-              let provisionURL = FileManager.default.decodeAndWrite(base64: provision, pathComponent: ".mobileprovision") else {
-            completion(WolFoxCertificateError.incompletePayload)
-            return
-        }
-        guard FR.checkPasswordForCertificate(for: p12URL, with: p12Password, using: provisionURL) else {
+	static func importCertificate(_ certificate: WolFoxRemoteCertificate, completion: @escaping (Error?) -> Void) {
+		guard let p12 = certificate.devp12,
+			  let provision = certificate.devmp,
+			  let password = certificate.p12Password?.trimmingCharacters(in: .whitespacesAndNewlines),
+			  !password.isEmpty,
+			  let p12URL = FileManager.default.decodeAndWrite(base64: p12, pathComponent: ".p12"),
+			  let provisionURL = FileManager.default.decodeAndWrite(base64: provision, pathComponent: ".mobileprovision") else {
+			completion(certificate.p12Password == nil ? WolFoxCertificateError.missingPassword : WolFoxCertificateError.incompletePayload)
+			return
+		}
+		guard FR.checkPasswordForCertificate(for: p12URL, with: password, using: provisionURL) else {
             completion(WolFoxCertificateError.validationFailed)
             return
         }
         FR.handleCertificateFiles(
-            p12URL: p12URL,
-            provisionURL: provisionURL,
-            p12Password: p12Password,
+			p12URL: p12URL,
+			provisionURL: provisionURL,
+			p12Password: password,
             certificateName: certificate.devName ?? "WolFox Device Certificate"
         ) { error in
             completion(error)
