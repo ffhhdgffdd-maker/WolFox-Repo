@@ -47,48 +47,30 @@ struct FeatherApp: App {
 		}
 	}
 	
-	private func _handleURL(_ url: URL) {
-		if url.scheme == "feather" {
-			if url.host == "import-certificate" {
-				guard let components = URLComponents(url: url, resolvingAgainstBaseURL: false),
-					  let queryItems = components.queryItems else { return }
-				func queryValue(_ name: String) -> String? {
-					queryItems.first(where: { $0.name == name })?.value?.removingPercentEncoding
-				}
-				guard let p12Base64 = queryValue("p12"),
-					  let provisionBase64 = queryValue("mobileprovision"),
-					  let passwordBase64 = queryValue("password"),
-					  let passwordData = Data(base64Encoded: passwordBase64),
-					  let password = String(data: passwordData, encoding: .utf8) else { return }
-				let generator = UINotificationFeedbackGenerator()
-				generator.prepare()
-				guard let p12URL = FileManager.default.decodeAndWrite(base64: p12Base64, pathComponent: ".p12"),
-					  let provisionURL = FileManager.default.decodeAndWrite(base64: provisionBase64, pathComponent: ".mobileprovision"),
-					  FR.checkPasswordForCertificate(for: p12URL, with: password, using: provisionURL) else {
-					generator.notificationOccurred(.error)
+		private func _handleURL(_ url: URL) {
+			if url.scheme == "feather" {
+				if url.host == "import-certificate" {
+					// لا تُقبل ملفات P12 أو كلمات المرور عبر custom URL scheme؛ أي تطبيق آخر
+					// يمكنه استدعاء هذا المخطط وقد يسرّب بيانات الاعتماد دون علم المستخدم.
 					return
 				}
-				FR.handleCertificateFiles(p12URL: p12URL, provisionURL: provisionURL, p12Password: password) { error in
-					if let error = error {
-						UIAlertController.showAlertWithOk(title: .localized("Error"), message: error.localizedDescription)
-					} else {
-						generator.notificationOccurred(.success)
-					}
+				if url.host == "export-certificate" {
+					guard let components = URLComponents(url: url, resolvingAgainstBaseURL: false) else { return }
+					let queryItems = components.queryItems?.reduce(into: [String: String]()) { $0[$1.name.lowercased()] = $1.value } ?? [:]
+					guard let callbackTemplate = queryItems["callback_template"]?.removingPercentEncoding else { return }
+					guard let callbackURL = URL(string: callbackTemplate),
+						  WolFoxRepository.isAllowedRepositoryURL(callbackURL) else { return }
+					FR.exportCertificateAndOpenUrl(using: callbackTemplate)
+					return
 				}
-				return
-			}
-			if url.host == "export-certificate" {
-				guard let components = URLComponents(url: url, resolvingAgainstBaseURL: false) else { return }
-				let queryItems = components.queryItems?.reduce(into: [String: String]()) { $0[$1.name.lowercased()] = $1.value } ?? [:]
-				guard let callbackTemplate = queryItems["callback_template"]?.removingPercentEncoding else { return }
-				FR.exportCertificateAndOpenUrl(using: callbackTemplate)
-			}
-			if let fullPath = url.validatedScheme(after: "/source/") {
-				FR.handleSource(fullPath) { }
-			}
-			if let fullPath = url.validatedScheme(after: "/install/"), let downloadURL = URL(string: fullPath) {
-				_ = DownloadManager.shared.startDownload(from: downloadURL)
-			}
+				if let fullPath = url.validatedScheme(after: "/source/") {
+					guard let sourceURL = URL(string: fullPath), WolFoxRepository.isAllowedRepositoryURL(sourceURL) else { return }
+					FR.handleSource(sourceURL.absoluteString) { }
+				}
+				if let fullPath = url.validatedScheme(after: "/install/"), let downloadURL = URL(string: fullPath) {
+					guard WolFoxRepository.isAllowedExternalDownload(downloadURL) else { return }
+					_ = DownloadManager.shared.startDownload(from: downloadURL)
+				}
 		} else if url.pathExtension == "ipa" || url.pathExtension == "tipa" {
 			if FileManager.default.isFileFromFileProvider(at: url) {
 				guard url.startAccessingSecurityScopedResource() else { return }
